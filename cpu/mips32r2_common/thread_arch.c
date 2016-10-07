@@ -31,7 +31,6 @@ static struct fp64ctx *currentfpctx;   /* fpu context of current running task */
 static struct fp64ctx *oldfpctx;       /* fpu context of last task that executed fpu */
 #endif
 
-
 /*
  *    Stack Layout, note struct gpctx is defined in
  *    $MIPS_ELF_ROOT/mips-mti-elf/include/mips/hal.h
@@ -267,7 +266,6 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
                 if(currentfpctx) {
                     _linkctx_append(ctx,&(currentfpctx->fp.link));
                 }
-
 #endif
 
                 sched_run();
