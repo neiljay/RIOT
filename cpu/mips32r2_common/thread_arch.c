@@ -21,6 +21,7 @@
 
 #define STACK_END_PAINT 0xdeadc0de
 #define C0_STATUS_EXL 2
+#define PADDING 16
 
 /*
  *    Stack Layout, note struct gpctx is defined in
@@ -29,7 +30,7 @@
  *    Top Of Stack
  *     ---------------
  *    |               |
- *    |  User Code    |
+ *    |  User stack   |
  *    |               |
  *     ---------------  <--- gpctx->sp
  *    |               |
@@ -61,12 +62,13 @@ char *thread_arch_stack_init(thread_task_func_t task_func, void *arg,
     initial_ctx->epc = (reg_t)task_func;
     initial_ctx->ra = (reg_t)sched_task_exit;
     initial_ctx->sp = (reg_t)fp;
+    initial_ctx->link = (struct linkctx *)NULL;
 
     /*
      * note the -4 (-16 bytes) as the toolchain exception handling code
      * adjusts the sp for alignment
      */
-    p -= 4;
+    p -= PADDING/sizeof(unsigned int);
 
     return (void *)p;
 }
@@ -117,8 +119,26 @@ void thread_arch_yield(void)
     asm volatile ("syscall 2");
 }
 
+struct linkctx* exctx_find(reg_t id, struct gpctx *gp)
+{
+    struct linkctx **ctx = (struct linkctx **)&gp->link;
+    while (*ctx) {
+        if ((*ctx)->id == id) {
+            return *ctx;
+        }
+        ctx = &(*ctx)->next;
+    }
+    return NULL;
+}
+
+
+
+#ifdef MIPS_DSP
+extern int _dsp_save(struct dspctx *ctx);
+extern int _dsp_load(struct dspctx *ctx);
+#endif
 /*
- * This attribute should not really be needed, it works around a toolchain
+ * The nomips16 attribute should not really be needed, it works around a toolchain
  * issue in 2016.05-03.
  */
 void __attribute__((nomips16))
@@ -126,6 +146,10 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
 {
     unsigned int syscall_num = 0, return_instruction = 0;
     struct gpctx *new_ctx;
+#ifdef MIPS_DSP
+    struct dspctx dsp_ctx; /* intentionally allocated on current stack */
+    struct dspctx* new_dspctx;
+#endif
 
     switch (exception) {
 
@@ -185,7 +209,9 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
             if (syscall_num == 2) {
                 /*
                  * Syscall 1 is reserved for UHI.
-                 *
+                 */
+
+                /*
                  * save the stack pointer in the thread info
                  * note we want the saved value to include the
                  * saved off context and the 16 bytes padding.
@@ -193,11 +219,22 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
                  * the prologue of this function has adjusted it
                  */
                 sched_active_thread->sp = (char *)(ctx->sp
-                                                   - sizeof(struct gpctx) - 16);
+                                                   - sizeof(struct gpctx) - PADDING);
+
+#ifdef MIPS_DSP
+                _dsp_save(&dsp_ctx);
+				_linkctx_append(ctx,&(dsp_ctx.link));
+#endif
 
                 sched_run();
 
-                new_ctx = (struct gpctx *)((int)sched_active_thread->sp + 16);
+                new_ctx = (struct gpctx *)((unsigned int)sched_active_thread->sp + PADDING);
+
+#ifdef MIPS_DSP
+                new_dspctx = (struct dspctx *)exctx_find(LINKCTX_TYPE_DSP,new_ctx);
+                if (new_dspctx)
+                    _dsp_load(new_dspctx);
+#endif
 
                 return_instruction = *((unsigned int *)(new_ctx->epc));
 
