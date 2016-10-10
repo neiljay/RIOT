@@ -1,2 +1,2 @@
-export CFLAGS += -mhard-float -mdsp
 export INCLUDES += -I$(RIOTBOARD)/$(BOARD)/include/
+export CFLAGS += -mhard-float -mdsp
