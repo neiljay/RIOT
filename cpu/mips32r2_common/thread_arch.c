@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "thread.h"
 #include "cpu.h"
@@ -18,10 +19,18 @@
 #include "cpu_conf.h"
 #include "periph_conf.h" /* for debug uart number */
 #include "periph/uart.h"
+#include "malloc.h"
 
 #define STACK_END_PAINT 0xdeadc0de
 #define C0_STATUS_EXL 2
 #define PADDING 16
+
+#ifdef MIPS_HARD_FLOAT
+/* pointer to the current and old fpu context for lazy context switching */
+static struct fp64ctx *currentfpctx;   /* fpu context of current running task */
+static struct fp64ctx *oldfpctx;       /* fpu context of last task that executed fpu */
+#endif
+
 
 /*
  *    Stack Layout, note struct gpctx is defined in
@@ -64,6 +73,14 @@ char *thread_arch_stack_init(thread_task_func_t task_func, void *arg,
     initial_ctx->sp = (reg_t)fp;
     initial_ctx->link = (struct linkctx *)NULL;
 
+#ifdef MIPS_HARD_FLOAT
+    /*
+     * Disable FPU so we get an exception on first use to allow
+     * Lazy FPU context save and restore
+     */
+    initial_ctx->status &= ~SR_CU1;
+    initial_ctx->status |= SR_FR; /*use double width FPU */
+#endif
     /*
      * note the -4 (-16 bytes) as the toolchain exception handling code
      * adjusts the sp for alignment
@@ -148,7 +165,7 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
     struct gpctx *new_ctx;
 #ifdef MIPS_DSP
     struct dspctx dsp_ctx; /* intentionally allocated on current stack */
-    struct dspctx* new_dspctx;
+    struct dspctx *new_dspctx;
 #endif
 
     switch (exception) {
@@ -223,15 +240,30 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
 
 #ifdef MIPS_DSP
                 _dsp_save(&dsp_ctx);
-				_linkctx_append(ctx,&(dsp_ctx.link));
+                _linkctx_append(ctx,&(dsp_ctx.link));
+#endif
+
+#ifdef MIPS_HARD_FLOAT
+                if(currentfpctx) {
+                    _linkctx_append(ctx,&(currentfpctx->fp.link));
+                }
+
 #endif
 
                 sched_run();
 
                 new_ctx = (struct gpctx *)((unsigned int)sched_active_thread->sp + PADDING);
 
+#ifdef MIPS_HARD_FLOAT
+				currentfpctx = (struct fp64ctx *)exctx_find(LINKCTX_TYPE_FP64, new_ctx);
+				if(!currentfpctx) {
+				    /* check for half-width FPU ctx in-case hardware doesn't support double. */
+				    currentfpctx = (struct fp64ctx *)exctx_find(LINKCTX_TYPE_FP32, new_ctx);
+				}
+#endif
+
 #ifdef MIPS_DSP
-                new_dspctx = (struct dspctx *)exctx_find(LINKCTX_TYPE_DSP,new_ctx);
+                new_dspctx = (struct dspctx *)exctx_find(LINKCTX_TYPE_DSP, new_ctx);
                 if (new_dspctx)
                     _dsp_load(new_dspctx);
 #endif
@@ -253,6 +285,14 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
 
                 new_ctx->status = mips32_get_c0(C0_STATUS);
 
+#ifdef MIPS_HARD_FLOAT
+                /*
+                 * Disable FPU so we get an exception on first use to allow
+                 * Lazy FPU context save and restore
+                 */
+                new_ctx->status &= ~SR_CU1;
+#endif
+
                 asm volatile ("lw    $sp, 0(%0)" : : "r" (&sched_active_thread->sp));
 
                 /*
@@ -264,7 +304,48 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
 
                 UNREACHABLE();
             }
-            break;
+        break;
+#ifdef MIPS_HARD_FLOAT
+        case EXC_CPU:
+        {
+            int newly_allocd  = false;
+
+            mips_bissr(SR_CU1);
+            ctx->status |= SR_CU1;
+
+            if (!currentfpctx) {
+                currentfpctx = malloc(sizeof(struct fp64ctx));
+                assert(currentfpctx);
+                memset(currentfpctx,0,sizeof(struct fp64ctx));
+                currentfpctx->fp.link.id = LINKCTX_TYPE_FP64;
+                newly_allocd = true;
+            }
+
+            /* this means no one exec'd fpu since we last run */
+            if (oldfpctx == currentfpctx) {
+                return;
+            }
+
+            if (oldfpctx) {
+                _fpctx_save(&oldfpctx->fp);
+            }
+
+            if (!newly_allocd) {
+                _fpctx_load(&currentfpctx->fp);
+            }
+
+            /*
+             * next fpu exception must save our context as it's not necessarily
+             * the next context switch will cause fpu exception and it's very
+             * hard for any future task to determine which was the last one
+             * that performed fpu operations. so by saving this pointer now we
+             * give this knowledge to that future task
+             */
+            oldfpctx = currentfpctx;
+        
+			return;
+        }
+#endif
 
             /* default: */
     }

@@ -20,6 +20,8 @@ extern "C" {
 #define UART_NUMOF          (0)
 
 #define MIPS_DSP            (1)
+#define MIPS_HARD_FLOAT     (1)
+
 #ifdef __cplusplus
 }
 #endif
