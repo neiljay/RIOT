@@ -266,6 +266,10 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
                 if(currentfpctx) {
                     _linkctx_append(ctx,&(currentfpctx->fp.link));
                 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> cpu: mips: Add FPU Context Save and Restore.
 #endif
 
                 sched_run();
