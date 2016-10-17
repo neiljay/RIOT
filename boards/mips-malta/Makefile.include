@@ -1,3 +1,2 @@
-# This file must exist for RIOT to build.
-
 export CFLAGS += -mhard-float -mdsp
+export INCLUDES += -I$(RIOTBOARD)/$(BOARD)/include/
