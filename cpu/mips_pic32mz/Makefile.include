@@ -10,7 +10,7 @@ export ROMABLE = 1
 include $(MIPS_ELF_ROOT)/share/mips/rules/mipshal.mk
 
 # define build specific options
-export CFLAGS_CPU   = -EL -march=m5101
+export CFLAGS_CPU   = -EL -march=m5101 -mmicromips
 export CFLAGS_LINK  = -ffunction-sections -fno-builtin -fshort-enums
 export CFLAGS_DBG = -O0 -g2
 export CFLAGS_OPT = -Os -g2
@@ -27,6 +27,9 @@ export LINKFLAGS += -Wl,--print-gc-sections #-Wl,--no-gc-sections #DONT GARBAGE 
 
 # This CPU implementation is using the new core/CPU interface:
 export CFLAGS += -DCOREIF_NG=1
+
+# The M51xx supports micromips ISA for reduced code size.
+export CFLAGS += -DMIPS_MICROMIPS
 
 export USEMODULE += periph
 

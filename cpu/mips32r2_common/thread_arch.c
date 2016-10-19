@@ -24,6 +24,17 @@
 #define STACK_END_PAINT 0xdeadc0de
 #define C0_STATUS_EXL 2
 #define PADDING 16
+#define MICROMIPS_ISA_MODE 1
+#define M32_SYSCALL 0xC
+#define M32_SYSCALL_MASK 0xfc00003f
+
+/* 
+ * note the major 16bits of a 32bit MicroMIPS opcode appear first in the
+ * instruction stream
+ */
+#define MM_SYSCALL 0x8B7C0000
+#define MM_SYSCALL_MASK 0xfffffc00
+
 
 #ifdef MIPS_HARD_FLOAT
 /* pointer to the current and old fpu context for lazy context switching */
@@ -57,7 +68,9 @@ char *thread_arch_stack_init(thread_task_func_t task_func, void *arg,
     uintptr_t *fp;
 
     /* paint */
-    *p = STACK_END_PAINT;
+	p--; 
+	*p-- = STACK_END_PAINT;
+
 
     /* prepare stack for __exception_restore() */
     fp = p;
@@ -71,6 +84,11 @@ char *thread_arch_stack_init(thread_task_func_t task_func, void *arg,
     initial_ctx->ra = (reg_t)sched_task_exit;
     initial_ctx->sp = (reg_t)fp;
     initial_ctx->link = (struct linkctx *)NULL;
+
+#ifdef MIPS_MICROMIPS
+    initial_ctx->epc |= MICROMIPS_ISA_MODE;
+    initial_ctx->ra |= MICROMIPS_ISA_MODE;
+#endif
 
 #ifdef MIPS_HARD_FLOAT
     /*
@@ -167,6 +185,14 @@ struct linkctx* exctx_find(reg_t id, struct gpctx *gp)
     return NULL;
 }
 
+/* unaligned access helper */
+static inline uint32_t __attribute__((optimize("-O3")))
+mem_rw(const void *vaddr)
+{
+    uint32_t v;
+    memcpy(&v, vaddr, sizeof(v));
+    return v;
+}
 
 
 #ifdef MIPS_DSP
@@ -190,7 +216,15 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
     switch (exception) {
 
         case EXC_SYS:
-            syscall_num = (*((unsigned int *)(ctx->epc)) >> 6) & 0xFFFF;
+#ifdef MIPS_MICROMIPS
+            /* note major 16bits of opcode is first in instruction stream */
+            syscall_num =
+                mem_rw((const void *)(ctx->epc & ~MICROMIPS_ISA_MODE))
+                & 0x3FF;
+#else
+            syscall_num = (mem_rw((const void *)ctx->epc) >> 6) & 0xFFFF;
+#endif
+
 #ifdef DEBUG_VIA_UART
 #include <mips/uhi_syscalls.h>
             /*
@@ -277,11 +311,11 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
                 new_ctx = (struct gpctx *)((unsigned int)sched_active_thread->sp + PADDING);
 
 #ifdef MIPS_HARD_FLOAT
-				currentfpctx = (struct fp64ctx *)exctx_find(LINKCTX_TYPE_FP64, new_ctx);
-				if(!currentfpctx) {
-				    /* check for half-width FPU ctx in-case hardware doesn't support double. */
-				    currentfpctx = (struct fp64ctx *)exctx_find(LINKCTX_TYPE_FP32, new_ctx);
-				}
+                currentfpctx = (struct fp64ctx *)exctx_find(LINKCTX_TYPE_FP64, new_ctx);
+                if(!currentfpctx) {
+                    /* check for half-width FPU ctx in-case hardware doesn't support double. */
+                    currentfpctx = (struct fp64ctx *)exctx_find(LINKCTX_TYPE_FP32, new_ctx);
+                }
 #endif
 
 #ifdef MIPS_DSP
@@ -290,11 +324,18 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
                     _dsp_load(new_dspctx);
 #endif
 
-                return_instruction = *((unsigned int *)(new_ctx->epc));
-
-                if ((return_instruction & 0xfc00003f) == 0xC) { /* syscall */
-                    new_ctx->epc += 4;                          /* move PC past the syscall */
+#ifdef MIPS_MICROMIPS
+                return_instruction =
+                    mem_rw((const void *)(new_ctx->epc & ~MICROMIPS_ISA_MODE));
+                if ((return_instruction & MM_SYSCALL_MASK) == MM_SYSCALL) { /* syscall */
+                    new_ctx->epc += 4; /* move PC past the syscall */
                 }
+#else
+                return_instruction = mem_rw((const void *)new_ctx->epc);
+                if ((return_instruction & M32_SYSCALL_MASK) == M32_SYSCALL) { /* syscall */
+                    new_ctx->epc += 4; /* move PC past the syscall */
+                }
+#endif
 
                 /*
                  * The toolchain Exception restore code just wholesale copies the
@@ -365,7 +406,7 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
              */
             oldfpctx = currentfpctx;
         
-			return;
+        return;
         }
 #endif
 
