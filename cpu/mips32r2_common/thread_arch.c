@@ -68,8 +68,8 @@ char *thread_arch_stack_init(thread_task_func_t task_func, void *arg,
     uintptr_t *fp;
 
     /* paint */
-	p--; 
-	*p-- = STACK_END_PAINT;
+    p--;
+    *p-- = STACK_END_PAINT;
 
 
     /* prepare stack for __exception_restore() */
