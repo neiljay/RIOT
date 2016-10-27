@@ -6,13 +6,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "bitarithm.h"
-#include "periph/uart.h"
-#include "periph_uart.h"
-
-static inline void w32(uint32_t addr, uint32_t val)
-{
-    *((volatile uint32_t *)addr) = val;
-}
+#include "board.h"
 
 void board_init(void)
 {
@@ -20,12 +14,12 @@ void board_init(void)
      * Setup pin mux for UART4 this is the one connected
      * to the ftdi chip (usb<->uart)
      */
-    w32(U4RXR, 0xb);            /* connect pin RPF2 to UART 4 RX */
-    w32(RPF8R, 2);              /* connect pin RPF8 to UART 4 TX */
-    w32(PORTFCLR, BIT8 | BIT2); /* clear down port F pins 2 and 8 */
-    w32(TRISFCLR, BIT2);        /* set portf pin 2 as input */
-    w32(TRISFSET, BIT8);        /* set portf pin 8 as output */
-    w32(ODCFCLR,  BIT8 | BIT2); /* set portf pint 2 and 8 as not open-drain */
+    U4RXREG = 0xb;            /* connect pin RPF2 to UART 4 RX */
+    RPF8R =   0x2;            /* connect pin RPF8 to UART 4 TX */
+    PORTFCLR =  BIT8 | BIT2;  /* clear down port F pins 2 and 8 */
+    TRISFCLR =  BIT2;         /* set portf pin 2 as input */
+    TRISFSET =  BIT8;         /* set portf pin 8 as output */
+    ODCFCLR =   BIT8 | BIT2;  /* set portf pint 2 and 8 as not open-drain */
 
     /* intialise UART used for debug (printf) */
 #ifdef DEBUG_VIA_UART
