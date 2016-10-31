@@ -21,8 +21,8 @@
 #include "periph/uart.h"
 #include "malloc.h"
 
-#define STACK_END_PAINT 0xdeadc0de
-#define C0_STATUS_EXL 2
+#define STACK_END_PAINT (0xdeadc0de)
+#define C0_STATUS_EXL   (2)
 #define PADDING 16
 #define MICROMIPS_ISA_MODE 1
 #define M32_SYSCALL 0xC
