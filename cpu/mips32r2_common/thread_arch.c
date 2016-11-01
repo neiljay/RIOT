@@ -21,19 +21,19 @@
 #include "periph/uart.h"
 #include "malloc.h"
 
-#define STACK_END_PAINT (0xdeadc0de)
-#define C0_STATUS_EXL   (2)
-#define PADDING 16
-#define MICROMIPS_ISA_MODE 1
-#define M32_SYSCALL 0xC
-#define M32_SYSCALL_MASK 0xfc00003f
+#define STACK_END_PAINT    (0xdeadc0de)
+#define C0_STATUS_EXL      (2)
+#define PADDING            (16)
+#define MICROMIPS_ISA_MODE (1)
+#define M32_SYSCALL        (0xC)
+#define M32_SYSCALL_MASK   (0xfc00003f)
 
 /* 
  * note the major 16bits of a 32bit MicroMIPS opcode appear first in the
  * instruction stream
  */
-#define MM_SYSCALL 0x8B7C0000
-#define MM_SYSCALL_MASK 0xfffffc00
+#define MM_SYSCALL      (0x8B7C0000)
+#define MM_SYSCALL_MASK (0xfffffc00)
 
 
 #ifdef MIPS_HARD_FLOAT
@@ -285,10 +285,6 @@ _mips_handle_exception(struct gpctx *ctx, int exception)
                 if(currentfpctx) {
                     _linkctx_append(ctx,&(currentfpctx->fp.link));
                 }
-<<<<<<< HEAD
-=======
-
->>>>>>> cpu: mips: Add FPU Context Save and Restore.
 #endif
 
                 sched_run();

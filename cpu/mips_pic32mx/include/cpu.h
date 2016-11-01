@@ -34,7 +34,7 @@ extern "C" {
 /**
  * @brief We run from flash on PIC32
  */
-#define FLASH_XIP 1
+#define FLASH_XIP (1)
 
 /**
  * @brief Stop the linker from throwing away the PIC32 config register settings
