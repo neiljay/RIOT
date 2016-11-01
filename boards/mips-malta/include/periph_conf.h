@@ -43,6 +43,10 @@ extern "C" {
  * @brief Enable DSP context save + restore.
  */
 #define MIPS_DSP            (1)
+
+/**
+ * @brief Enable FPU context save + restore.
+ */
 #define MIPS_HARD_FLOAT     (1)
 
 #ifdef __cplusplus
