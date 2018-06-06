@@ -1,5 +1,5 @@
 /*
- * Copyright 2016, Imagination Technologies Limited and/or its
+ * Copyright 2018, Imagination Technologies Limited and/or its
  *                 affiliated group companies.
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
@@ -13,13 +13,13 @@
  * @{
  *
  * @file
- * @brief       API for supporting External Interrupt Controllers (EIC mode)
+ * @brief       API for supporting Interrupt Controllers
  *
  * @author      Neil Jones <neil.jones@imgtec.com>
  */
 
-#ifndef EIC_IRQ_H
-#define EIC_IRQ_H
+#ifndef IRQ_H
+#define IRQ_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,31 +40,36 @@ extern "C" {
 #define EIC_IRQ_TIMER (-1)
 #define EIC_IRQ_FDC   (-2)
 #define EIC_IRQ_PC    (-3)
+
+#define IRQ_PRIO_1 1
+#define IRQ_PRIO_MAX 8
+
+typedef void(irq_fn_t)(int);
 /** @} */
 
 /**
- * @brief   Configure and route the interrupt
+ * @brief   initialise the interrupt module
  */
-void eic_irq_configure(int irq_num);
+void irq_initialise(void);
+
+/**
+ * @brief   Route (+ enable) an interrupt
+ */
+void irq_route(int irq_num, int priority, irq_fn_t* fn);
 
 /**
  * @brief   Enable an interrupt
  */
-void eic_irq_enable(int irq_num);
+void irq_enable(int irq_num);
 
 /**
  * @brief   Disable an interrupt
  */
-void eic_irq_disable(int irq_num);
-
-/**
- * @brief   Acknowledge an interrupt
- */
-void eic_irq_ack(int irq_num);
+void irq_disable(int irq_num);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* EIC_IRQ_H */
+#endif /* IRQ_H */
 /** @} */

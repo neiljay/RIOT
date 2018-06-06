@@ -8,9 +8,11 @@
  *
  */
 #include <assert.h>
+#include "../mips32r2_common/include/irq.h"
 
 #include "board.h"
 #include "eic_irq.h"
+
 
 void eic_irq_configure(int irq_num)
 {
