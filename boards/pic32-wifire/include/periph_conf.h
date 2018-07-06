@@ -24,6 +24,7 @@
 
 #include "periph_cpu.h"
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,8 +53,9 @@ extern "C" {
   * @{
   */
 #define UART_NUMOF          (6)
-#define DEBUG_VIA_UART      (4)
+//#define DEBUG_VIA_UART      (4)
 #define DEBUG_UART_BAUD     (9600)
+#define UART_STDIO_DEV      UART_DEV(4)
 /** @} */
 
 #ifdef __cplusplus

@@ -21,6 +21,7 @@
 #include <assert.h>
 #include "periph/uart.h"
 #include "board.h"
+#include "../../mips32r2_common/include/irq.h"
 
 #define UxMODE(U)    (U.regs[0x00/4])
 #define UxMODECLR(U) (U.regs[0x04/4])
@@ -38,10 +39,31 @@
 typedef struct PIC32_UART_tag {
     volatile uint32_t *regs;
     uint32_t clock;
+    uart_rx_cb_t cb;
+    void* arg;
 } PIC32_UART_T;
 
 /* pic uarts are numbered 1 to 6 */
 static PIC32_UART_T pic_uart[UART_NUMOF + 1];
+
+static uart_t irq_num_to_uart(int irq_num)
+{
+    int i;
+    for(i=0; i<=UART_NUMOF; i++)
+    {
+        if(irq_num == uart_irq_conf[i])
+            return i;
+    }
+    return 0;
+}
+
+static void uart_isr(int irq_num)
+{
+    uart_t uart = irq_num_to_uart(irq_num);
+    uint8_t rx = UxRXREG(pic_uart[uart]);
+    if(pic_uart[uart].cb)
+        pic_uart[uart].cb(pic_uart[uart].arg,rx);
+}
 
 int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 {
@@ -61,6 +83,13 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     UxMODE(pic_uart[uart])= _U1MODE_ON_MASK;
     UxSTASET(pic_uart[uart])= _U1STA_URXEN_MASK;
     UxSTASET(pic_uart[uart])= _U1STA_UTXEN_MASK;
+
+    if (rx_cb) {
+        mips_irq_route(uart_irq_conf[uart], IRQ_PRIO_1, uart_isr);
+        pic_uart[uart].cb = rx_cb;
+        pic_uart[uart].arg = arg;
+    }
+        
 
     return 0;
 }

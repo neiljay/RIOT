@@ -46,6 +46,8 @@ extern "C" {
  * @brief   We are using an External Interrupt Controller (all pic32 devices use this mode)
  */
 #define EIC_IRQ      (1)
+#define IRQ_NONE     (-1)
+static const int uart_irq_conf[] = {IRQ_NONE, _UART1_RX_VECTOR, _UART2_RX_VECTOR, _UART3_RX_VECTOR, _UART4_RX_VECTOR, _UART5_RX_VECTOR, _UART6_RX_VECTOR };
 
 /**
  * @name    LED pin configuration

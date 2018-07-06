@@ -25,22 +25,7 @@
 extern "C" {
 #endif
 
-/**
- * @brief   Available interrupt priorities
- */
-enum {
-    IRQ_PRIO_0 = 0,             /**< Highest */
-    IRQ_PRIO_1 = 1,             /**< intermediate */
-    IRQ_PRIO_2 = 2,             /**< intermediate */
-    IRQ_PRIO_3 = 3,             /**< intermediate */
-    IRQ_PRIO_4 = 4,             /**< intermediate */
-    IRQ_PRIO_5 = 5,             /**< intermediate */
-    IRQ_PRIO_6 = 6,             /**< intermediate */
-    IRQ_PRIO_7 = 7,             /**< Lowest */
-    IRQ_PRIO_MAX,
-};
-
-typedef void(*irq_fn_t)() ;
+//typedef void(*irq_fn_t)() ;
 
 typedef struct irq_table {
     int irq_num;
@@ -51,27 +36,27 @@ typedef struct irq_table {
 /**
  * @brief   initialise the interrupt subsystem.
  */
-void irq_initialise();
+//void irq_initialise();
 
 /**
  * @brief   Setup a handler
  */
-void irq_route(int num, int priority, irq_fn_t* fn);
+//void irq_route(int num, int priority, irq_fn_t* fn);
 
 /**
  * @brief   Enable an interrupt
  */
-void irq_enable(int irq_num);
+//void irq_enable(int irq_num);
 
 /**
  * @brief   Disable an interrupt
  */
-void irq_disable(int irq_num);
+//void irq_disable(int irq_num);
 
 /**
  * @brief   Acknowledge an interrupt
  */
-void irq_ack(int irq_num);
+//void irq_ack(int irq_num);
 
 #ifdef __cplusplus
 }

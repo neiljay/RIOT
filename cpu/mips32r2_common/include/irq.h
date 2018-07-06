@@ -18,8 +18,8 @@
  * @author      Neil Jones <neil.jones@imgtec.com>
  */
 
-#ifndef IRQ_H
-#define IRQ_H
+#ifndef MIRQ_H
+#define MIRQ_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,8 +41,21 @@ extern "C" {
 #define EIC_IRQ_FDC   (-2)
 #define EIC_IRQ_PC    (-3)
 
-#define IRQ_PRIO_1 1
-#define IRQ_PRIO_MAX 8
+
+/**
+ * @brief   Available interrupt priorities
+ */
+enum {
+    IRQ_PRIO_0 = 0,             /**< Highest */
+    IRQ_PRIO_1 = 1,             /**< intermediate */
+    IRQ_PRIO_2 = 2,             /**< intermediate */
+    IRQ_PRIO_3 = 3,             /**< intermediate */
+    IRQ_PRIO_4 = 4,             /**< intermediate */
+    IRQ_PRIO_5 = 5,             /**< intermediate */
+    IRQ_PRIO_6 = 6,             /**< intermediate */
+    IRQ_PRIO_7 = 7,             /**< Lowest */
+    IRQ_PRIO_MAX,
+};
 
 typedef void(irq_fn_t)(int);
 /** @} */
@@ -50,22 +63,22 @@ typedef void(irq_fn_t)(int);
 /**
  * @brief   initialise the interrupt module
  */
-void irq_initialise(void);
+void mips_irq_initialise(void);
 
 /**
  * @brief   Route (+ enable) an interrupt
  */
-void irq_route(int irq_num, int priority, irq_fn_t* fn);
+void mips_irq_route(int irq_num, int priority, irq_fn_t* fn);
 
 /**
  * @brief   Enable an interrupt
  */
-void irq_enable(int irq_num);
+void mips_irq_enable(int irq_num);
 
 /**
  * @brief   Disable an interrupt
  */
-void irq_disable(int irq_num);
+void mips_irq_disable(int irq_num);
 
 #ifdef __cplusplus
 }

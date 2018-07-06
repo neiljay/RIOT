@@ -16,6 +16,7 @@
 #include "bitarithm.h"
 #include "board.h"
 #include "cpu.h"
+#include "uart_stdio.h"
 
 extern void dummy(void);
 
@@ -27,11 +28,6 @@ void board_init(void)
      */
     U4RXR =   0xb;            /* connect pin RPF2 to UART 4 RX */
     RPF8R =   0x2;            /* connect pin RPF8 to UART 4 TX */
-
-    /* intialise UART used for debug (printf) */
-#ifdef DEBUG_VIA_UART
-    uart_init(DEBUG_VIA_UART, DEBUG_UART_BAUD, NULL, 0);
-#endif
 
     /* Turn off all LED's */
     gpio_init(LED1_PIN, GPIO_OUT);
@@ -45,6 +41,9 @@ void board_init(void)
 
     /* initialize the CPU */
     cpu_init();
+    
+    /* intialise UART used for debug (printf) */
+    uart_stdio_init();
 
     /* Stop the linker from throwing away the PIC32 config register settings */
     dummy();

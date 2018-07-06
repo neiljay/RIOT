@@ -52,11 +52,13 @@ extern "C" {
   *          this is the UART connected to the MikroBUS
   *
   *          Note Microchip number the UARTS 1->4
+  *          and other parts can have up to 6 UARTS
   * @{
   */
 #define UART_NUMOF          (4)
 #define DEBUG_VIA_UART      (3)
 #define DEBUG_UART_BAUD     (9600)
+static const int uart_irq_conf[] = {IRQ_NONE, _UART_1_VECTOR, _UART_2_VECTOR, _UART_3_VECTOR, _UART_4_VECTOR, IRQ_NONE, IRQ_NONE };
 /** @} */
 
 #ifdef __cplusplus

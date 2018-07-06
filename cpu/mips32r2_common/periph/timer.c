@@ -112,8 +112,8 @@ int timer_init(tim_t dev, unsigned long freq, timer_cb_t cb, void *arg)
 
     /* Enable Timer Interrupts */
 #ifdef EIC_IRQ
-    irq_initialise(EIC_IRQ_TIMER);
-    irq_route(EIC_IRQ_TIMER, IRQ_PRIO_1, timer_isr);
+    //mips_irq_initialise();
+    mips_irq_route(EIC_IRQ_TIMER, IRQ_PRIO_1, timer_isr);
 #else
     mips32_bs_c0(C0_STATUS, SR_HINT5);
 #endif
@@ -194,7 +194,7 @@ void timer_irq_enable(tim_t dev)
 {
     (void)dev;
 #ifdef EIC_IRQ
-    irq_enable(EIC_IRQ_TIMER);
+    mips_irq_enable(EIC_IRQ_TIMER);
 #else
     mips32_bs_c0(C0_STATUS, SR_HINT5);
 #endif
@@ -205,7 +205,7 @@ void timer_irq_disable(tim_t dev)
 {
     (void)dev;
 #ifdef EIC_IRQ
-    irq_disable(EIC_IRQ_TIMER);
+    mips_irq_disable(EIC_IRQ_TIMER);
 #else
     mips32_bc_c0(C0_STATUS, SR_HINT5);
 #endif
@@ -214,9 +214,9 @@ void timer_irq_disable(tim_t dev)
 static void timer_isr(int irq_num)
 {
     (void)irq_num;
-    uint32_t status = irq_arch_disable();
+    uint32_t status = irq_disable();
     counter += TIMER_ACCURACY;
-    irq_arch_restore(status);
+    irq_restore(status);
 
     if (counter == compares[0]) {
         /*

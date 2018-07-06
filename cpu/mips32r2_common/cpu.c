@@ -20,6 +20,7 @@
 #include "kernel_init.h"
 #include "cpu.h"
 #include "board.h"
+#include "include/irq.h"
 
 
 void mips_start(void);
@@ -77,5 +78,6 @@ void panic_arch(void)
 void cpu_init(void)
 {
     /* trigger static peripheral initialization */
+    mips_irq_initialise();
     periph_init();
 }

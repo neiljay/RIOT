@@ -24,7 +24,7 @@ typedef struct {
 static irq_table_t* irq_table[IRQ_PRIO_MAX] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 static volatile int spurious_irqs = 0;
 
-void irq_initialise(void)
+void mips_irq_initialise(void)
 {
 #ifdef MIPS_MICROMIPS
     /* Ensure exceptions are encoded correctly! */
@@ -61,17 +61,31 @@ static int translate_irq(int irq_num)
     return irq_num;
 }
 
+static void set_priority(int irq_num, int priority)
+{
+	/* Compute registers */
+	uint32_t wordNum = irq_num >> 2;
+	volatile uint32_t *cregs = (uint32_t*)&IPC0CLR;
+	volatile uint32_t *sregs = (uint32_t*)&IPC0SET;
+	/* 0 would disable */
+	if (!priority)
+		priority = 1;
+	/* Clear out current priority */
+	cregs[wordNum << 2] = 0x1f << ((irq_num & 3) << 3);
+	/* Set new priority */
+	sregs[wordNum << 2] = (priority << 2) << ((irq_num & 3) << 3);
+}
 /**
  * @brief   Route an interrupt handle to the supplied IRQ number and enable it
  */
-void irq_route(int irq_num, int priority, irq_fn_t* fn)
+void mips_irq_route(int irq_num, int priority, irq_fn_t* fn)
 {
     /* assert(priority_grp < IRQ_PRIO_MAX);for now only support 1 prio level */
-    assert(priority == 1);
+    assert(priority == IRQ_PRIO_1);
 
     irq_num = translate_irq(irq_num);
 
-    irq_disable(irq_num);
+    mips_irq_disable(irq_num);
 
     irq_table_t* irq;
     HASH_FIND_INT(irq_table[priority], &irq_num, irq);
@@ -83,36 +97,39 @@ void irq_route(int irq_num, int priority, irq_fn_t* fn)
     }
     irq->fn = fn;
 
-    /* Set IRQ priority */
-    IPC0SET = (priority & 0x7) << _IPC0_CTIP_POSITION | 0 << _IPC0_CTIS_POSITION;
+    set_priority(irq_num, priority);
 
-    irq_enable(irq_num);
+    mips_irq_enable(irq_num);
 }
 
 /**
  * @brief   Enable an interrupt
  */
-void irq_enable(int irq_num)
+void mips_irq_enable(int irq_num)
 {
     irq_num = translate_irq(irq_num);
     uint32_t wordNum = irq_num >> 5;
-    ((uint32_t *) & IEC0SET)[wordNum << 2] = 1 << (irq_num & 31);
+    volatile uint32_t *sregs= (uint32_t *) &IEC0SET;
+    sregs[wordNum << 2] = 1 << (irq_num & 31);
 }
 
 /**
  * @brief   Disable an interrupt
  */
-void irq_disable(int irq_num)
+void mips_irq_disable(int irq_num)
 {
     irq_num = translate_irq(irq_num);
     uint32_t wordNum = irq_num >> 5;
-    ((uint32_t *) & IEC0CLR)[wordNum << 2] = 1 << (irq_num & 31);
+    volatile uint32_t* cregs = (uint32_t *) &IEC0CLR;
+    //uint32_t* creg = (uint32_t*)(((uint32_t *) & IEC0CLR)[wordNum << 2]);
+    cregs[wordNum << 2] = 1 << (irq_num & 31);
 }
 
 static void irq_ack(int irq_num)
 {
     uint32_t wordNum = irq_num >> 5;
-    ((uint32_t *) & IFS0CLR)[wordNum << 2] = 1 << (irq_num & 31);
+    volatile uint32_t* cregs = (uint32_t *) &IFS0CLR;
+    cregs[wordNum << 2] = 1 << (irq_num & 31);
 }
 
 static void irq_dispatch(int priority, int irq_num)
@@ -141,9 +158,10 @@ void __attribute__ ((interrupt("vector=sw0"), keep_interrupts_masked)) _mips_isr
     register int cr = mips_getcr();
     register int irq_num;
 
-    if (cr & CR_TI) {
-        irq_num = _CORE_TIMER_VECTOR;
-    } else if (cr & CR_RIPL) {
+    //if (cr & CR_TI) {
+    //    irq_num = _CORE_TIMER_VECTOR;
+    //} else 
+    if (cr & CR_RIPL) {
         /* Don't need to check RIPL number as we are using non vectored mode */
         irq_num = INTSTAT & _INTSTAT_SIRQ_MASK;
     } else {
@@ -151,6 +169,6 @@ void __attribute__ ((interrupt("vector=sw0"), keep_interrupts_masked)) _mips_isr
         return;
     }
 
-    irq_dispatch(0,irq_num);
+    irq_dispatch(IRQ_PRIO_1,irq_num);
     irq_ack(irq_num);
 }
